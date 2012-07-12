@@ -4,6 +4,7 @@ import javax.script.ScriptEngineManager
 
 
 abstract class RuleDefNode
+
 trait LeafNode
 
 abstract class Operator extends RuleDefNode
@@ -27,14 +28,16 @@ case object Neq extends ExpOperator {
 }
 
 case class Expression(field: String, oper: ExpOperator, value: String)
-    extends RuleDefNode with LeafNode {
+  extends RuleDefNode with LeafNode {
   override def toString = String.format("wi.%s %s \"%s\"", field, oper.toString, value)
 }
 
 abstract class SetOperator
+
 case object In extends SetOperator {
   override def toString = "isIn"
 }
+
 case object NotIn extends SetOperator {
   override def toString = "isNotIn"
 }
@@ -45,27 +48,27 @@ case class SetExpression(field: String, oper: SetOperator, values: String)
 }
 
 object JavaHelper {
-  def getEmptyList : List[ConditionTree] = {
+  def getEmptyList: List[ConditionTree] = {
     List[ConditionTree]()
   }
 }
 
-case class RuleDefinition(name: String, itemTypeExpression: Expression,
-                         subtypeExpression: Option[Expression],
-                         conditions: Option[ConditionTree] ) {
-  def buildJSRule() : String = {
+case class RuleDefinition(name: String, org: String, itemType: String,
+                          subtype: Option[String],
+                          conditions: Option[ConditionTree]) {
+  def buildJSRule(): String = {
 
-     val ruleText = new StringBuilder
-     ruleText ++= "var "
-     ruleText ++= name
-     ruleText ++= " = function(wi) { if("
+    val ruleText = new StringBuilder
+    ruleText ++= "var "
+    ruleText ++= name
+    ruleText ++= " = function(wi) { if("
 
-      ruleText ++= itemTypeExpression.toString
+    ruleText ++= Expression("itemtype", Eq, itemType).toString
 
-    subtypeExpression match {
-      case Some(e) => {
+    subtype match {
+      case Some(s) => {
         ruleText ++= " && "
-        ruleText ++= e.toString
+        ruleText ++= Expression("subtype", Eq, s).toString
       }
       case None => ()
     }
@@ -80,29 +83,29 @@ case class RuleDefinition(name: String, itemTypeExpression: Expression,
     }
 
 
-     ruleText ++= ") { return true; } else { return false; }}"
+    ruleText ++= ") { return true; } else { return false; }}"
 
-     ruleText.toString
-   }
+    ruleText.toString
+  }
 }
 
 case class ConditionTree(parent: ConditionTree, node: RuleDefNode, children: List[ConditionTree] = List[ConditionTree]()) {
-  def addParent(theParent: ConditionTree) : ConditionTree = {
+  def addParent(theParent: ConditionTree): ConditionTree = {
     copy(theParent, node, children)
   }
 
-  def addChild(defNode: RuleDefNode) : ConditionTree = {
-    addChild(ConditionTree(null,defNode))
+  def addChild(defNode: RuleDefNode): ConditionTree = {
+    addChild(ConditionTree(null, defNode))
   }
 
-  def addChild(child: ConditionTree) : ConditionTree = {
+  def addChild(child: ConditionTree): ConditionTree = {
     copy(parent, node, (child.addParent(this)) :: children)
   }
 
-  def visit(builder: StringBuilder) : Unit = {
+  def visit(builder: StringBuilder): Unit = {
     require(builder != null, "Null StringBuilder passed to visit")
     val leaf = node match {
-      case _ : LeafNode =>  {
+      case _: LeafNode => {
         builder ++= node.toString
         true
       }
@@ -124,30 +127,21 @@ case class ConditionTree(parent: ConditionTree, node: RuleDefNode, children: Lis
     }
   }
 
-  def visit() : StringBuilder = {
+  def visit(): StringBuilder = {
     val builder = new StringBuilder
     visit(builder)
     builder
   }
-
-
 }
 
 object MyTest {
-  def main(args: Array[String]) : Unit = {
-     val highNet = Expression("cause", Eq, "high net")
-         val platcust = Expression("platcust", Eq, "plat cust")
+  def main(args: Array[String]): Unit = {
+    val highNet = Expression("cause", Eq, "high net")
+    val platcust = Expression("platcust", Eq, "plat cust")
+    val causeExp = ConditionTree(null, Or).addChild(highNet).addChild(platcust)
+    val rule = RuleDefinition("recordType1A", "myorg", "item1", Option("foobar"), Option(causeExp))
 
-
-         val itemtype = Expression("itemtype", Eq, "item1")
-         val subtype = Expression("subtype", Eq, "foobar")
-
-         val causeExp = ConditionTree(null, Or).addChild(highNet).addChild(platcust)
-
-        val rule = RuleDefinition("recordType1A", itemtype,Option(subtype),Option(causeExp))
-         //val rule = ConditionTree(null, And).addChild(itemtype).addChild(subtype).addChild(causeExp)
-
-        val ruleText = rule.buildJSRule()
+    val ruleText = rule.buildJSRule()
 
     //Evaluate it
     val factory = new ScriptEngineManager();
@@ -168,12 +162,12 @@ object MyTest {
 }
 
 object SetTest {
-  def main(args: Array[String]) : Unit = {
+  def main(args: Array[String]): Unit = {
     val cause = SetExpression("cause", In, "['high net','plat cust']")
     val worm = Expression("wormtype", Eq, "mealy")
     val itemtype = Expression("itemtype", Eq, "item1")
     val conditions = ConditionTree(null, And).addChild(cause).addChild(worm)
-    val rule = RuleDefinition("recordType1A", itemtype, None, Option(conditions))
+    val rule = RuleDefinition("recordType1A", "myorg", "item1", None, Option(conditions))
 
 
     println(rule.buildJSRule)

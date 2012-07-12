@@ -12,10 +12,8 @@ class RuleEvaluator
   {
     val highNet = Expression("cause", Eq, "high net")
     val platcust = Expression("platcust", Eq, "plat cust")
-    val itemtype = Expression("itemtype", Eq, "item1")
-    val subtype = Expression("subtype", Eq, "foobar")
     val causeExp = ConditionTree(null, Or).addChild(highNet).addChild(platcust)
-    val rule = RuleDefinition("recordType1A", itemtype, Some(subtype), Some(causeExp))
+    val rule = RuleDefinition("recordType1A", "myorg", "item1", Some("foobar"), Some(causeExp))
 
     val ruleText = rule.buildJSRule()
 

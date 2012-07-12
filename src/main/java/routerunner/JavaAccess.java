@@ -14,6 +14,7 @@ import rules.Expression;
 import rules.In$;
 import rules.JavaHelper;
 import rules.ConditionTree;
+import rules.Neq$;
 import rules.RuleDefinition;
 import rules.SetExpression;
 import scala.Some;
@@ -23,13 +24,15 @@ public class JavaAccess
     public static void main(String[] args)
     {
         SetExpression cause = new SetExpression("cause", In$.MODULE$, "['high net','plat cust']");
-        Expression itemtype = new Expression("itemtype", Eq$.MODULE$, "item1");
-        Expression subtype = new Expression("subtype",  Eq$.MODULE$, "foobar");
+        Expression foo = new Expression("foo", Neq$.MODULE$, "bar");
+        ConditionTree andTree = new ConditionTree(null, And$.MODULE$, JavaHelper.getEmptyList())
+                .addChild(cause).addChild(foo);
         ConditionTree conditions = new ConditionTree(null, And$.MODULE$, JavaHelper.getEmptyList());
         RuleDefinition rule = new RuleDefinition(
                 "recordType1A",
-                itemtype,
-                new Some<Expression>(subtype),
+                "myorg",
+                "item1",
+                new Some<String>("foobar"),
                 new Some<ConditionTree>(conditions)
         ) ;
 
